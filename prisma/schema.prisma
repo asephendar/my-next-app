@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  role       Role
+  created_at DateTime @default(now())
+
+  // Relasi dengan tasks (yang dibuat dan ditugaskan)
+  tasks_created  tasks[] @relation("TasksCreated")
+  tasks_assigned tasks[] @relation("TasksAssigned")
+
+  // Tambahkan relasi histories (sebagai user yang melakukan perubahan)
+  histories histories[] @relation("UserHistories")
+}
+
+model tasks {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  status         Status   @default(NotStarted)
+  created_by     users    @relation("TasksCreated", fields: [created_by_id], references: [id])
+  created_by_id  String
+  assigned_to    users?   @relation("TasksAssigned", fields: [assigned_to_id], references: [id])
+  assigned_to_id String?
+  created_at     DateTime @default(now())
+
+  // Relasi dengan histories
+  histories histories[]
+}
+
+model histories {
+  id      String @id @default(uuid())
+  task    tasks  @relation(fields: [task_id], references: [id])
+  task_id String
+  action  String // Contoh: "Task Created", "Status Updated"
+
+  // Perbaiki relasi dengan users
+  changed_by    users    @relation("UserHistories", fields: [changed_by_id], references: [id])
+  changed_by_id String
+  timestamp     DateTime @default(now())
+}
+
+enum Role {
+  Lead
+  Team
+}
+
+enum Status {
+  NotStarted
+  OnProgress
+  Done
+  Reject
+}
